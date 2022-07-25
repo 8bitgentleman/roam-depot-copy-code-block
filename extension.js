@@ -1,9 +1,6 @@
 
 async function copyCode(e){
   // datomic query to pull the block string. Only supports blocks with a single code block inside
-  // console.log(e)
-  // console.log(e.path)
-  // console.log(e.srcElement.id)
   let blockUID = e.srcElement.id
   let query = `[:find ?s .
       :in $ ?uid
@@ -16,13 +13,11 @@ async function copyCode(e){
 
   // remove code block markdown using regex
   let code = blockString.match(/```(?:\b.*\b)\n([\s\S]*?)```/)[1];
-  console.log(code)
   // copy codeblock to clipboard
   navigator.clipboard.writeText(code).then(function() {
   }, function(err) {
     console.error('Async: Could not copy text: ', err);
   });
-  console.log(blockUID, code);
 }
 
 function createButton(blockUID, DOMLocation){
@@ -38,43 +33,23 @@ function createButton(blockUID, DOMLocation){
 
       return copySpan;
   };
-  var nameToUse = 'copy-code-button';
 
-  // var checkForButton = DOMLocation.getElementsByClassName(nameToUse);
-  let checkForButton
+  // check if a button exists
+  let checkForButton = DOMLocation.getElementsByClassName('copy-code-button').length;
+
   if (!checkForButton) {
       var mainButton = createCopyButton();
       var settingsBar = DOMLocation.getElementsByClassName("rm-code-block__settings-bar")[0].lastElementChild;
       
-      // nextIconButton.insertAdjacentElement("afterend", mainButton);
-
       mainButton.addEventListener("click", copyCode, false);
-      // settingsBar.appendChild(mainButton);
+
       settingsBar.insertAdjacentElement("beforebegin", mainButton);
+      console.log(DOMLocation.getElementsByClassName('copy-code-button'))
   }   
 }
 
-function destroyButton(){
-
-  // remove all parts of the button
-  const buttons = document.querySelectorAll('.copy-code-button');
-  // console.log(buttons)
-  buttons.forEach(tog => {
-      tog.remove();
-  });
-}
-
-// find all code blocks on page
-let codeBlocks = document.querySelectorAll(".rm-code-block")
-for (let i = 0; i < codeBlocks.length; i++) {
-  // get the blockuid from the parent div.id
-  let blockUID = codeBlocks[i].closest(".roam-block").id.split("-")
-  blockUID = blockUID[blockUID.length - 1]
-
-  // add the copy button
-  createButton(blockUID, codeBlocks[i])
-}
-
+// still need to do this for every page reload
+//maybe need a mutation observer?
 function onload() {
   console.log("load copy code block plugin");
 
