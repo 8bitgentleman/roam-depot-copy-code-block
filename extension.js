@@ -1,42 +1,103 @@
-const panelConfig = {
-  tabTitle: "Test Ext 1",
-  settings: [
-      {id:          "button-setting",
-       name:        "Button test",
-       description: "tests the button",
-       action:      {type:    "button",
-                     onClick: (evt) => { console.log("Button clicked!"); },
-                     content: "Button"}},
-      {id:          "switch-setting",
-       name:        "Switch Test",
-       description: "Test switch component",
-       action:      {type:     "switch",
-                     onChange: (evt) => { console.log("Switch!", evt); }}},
-      {id:     "input-setting",
-       name:   "Input test",
-       action: {type:        "input",
-                placeholder: "placeholder",
-                onChange:    (evt) => { console.log("Input Changed!", evt); }}},
-      {id:     "select-setting",
-       name:   "Select test",
-       action: {type:     "select",
-                items:    ["one", "two", "three"],
-                onChange: (evt) => { console.log("Select Changed!", evt); }}}
-  ]
-};
 
-await function onload({extensionAPI}) {
-  // set defaults if they dont' exist
-  if (!extensionAPI.settings.get('data')) {
-      await extensionAPI.settings.set('data', "01");
+async function copyCode(e){
+  // datomic query to pull the block string. Only supports blocks with a single code block inside
+  // console.log(e)
+  // console.log(e.path)
+  // console.log(e.srcElement.id)
+  let blockUID = e.srcElement.id
+  let query = `[:find ?s .
+      :in $ ?uid
+      :where 
+        [?e :block/uid ?uid]
+        [?e :block/string ?s]
+        ]`;
+
+  let blockString = window.roamAlphaAPI.q(query,blockUID);
+
+  // remove code block markdown using regex
+  let code = blockString.match(/```(?:\b.*\b)\n([\s\S]*?)```/)[1];
+  console.log(code)
+  // copy codeblock to clipboard
+  navigator.clipboard.writeText(code).then(function() {
+  }, function(err) {
+    console.error('Async: Could not copy text: ', err);
+  });
+  console.log(blockUID, code);
+}
+
+function createButton(blockUID, DOMLocation){
+  const createCopyButton = () => {
+      const copySpan = document.createElement("span");
+      copySpan.className = "copy-code-button";
+
+      const copyButton = document.createElement("button");
+      copyButton.innerText  = `Copy`;
+      copyButton.className = "bp3-button bp3-minimal bp3-small";
+      copyButton.id = blockUID;
+      copySpan.appendChild(copyButton);
+
+      return copySpan;
+  };
+  var nameToUse = 'copy-code-button';
+
+  // var checkForButton = DOMLocation.getElementsByClassName(nameToUse);
+  let checkForButton
+  if (!checkForButton) {
+      var mainButton = createCopyButton();
+      var settingsBar = DOMLocation.getElementsByClassName("rm-code-block__settings-bar")[0].lastElementChild;
+      
+      // nextIconButton.insertAdjacentElement("afterend", mainButton);
+
+      mainButton.addEventListener("click", copyCode, false);
+      // settingsBar.appendChild(mainButton);
+      settingsBar.insertAdjacentElement("beforebegin", mainButton);
+  }   
+}
+
+function destroyButton(){
+
+  // remove all parts of the button
+  const buttons = document.querySelectorAll('.copy-code-button');
+  // console.log(buttons)
+  buttons.forEach(tog => {
+      tog.remove();
+  });
+}
+
+// find all code blocks on page
+let codeBlocks = document.querySelectorAll(".rm-code-block")
+for (let i = 0; i < codeBlocks.length; i++) {
+  // get the blockuid from the parent div.id
+  let blockUID = codeBlocks[i].closest(".roam-block").id.split("-")
+  blockUID = blockUID[blockUID.length - 1]
+
+  // add the copy button
+  createButton(blockUID, codeBlocks[i])
+}
+
+function onload() {
+  console.log("load copy code block plugin");
+
+  // find all code blocks on page
+  let codeBlocks = document.querySelectorAll(".rm-code-block")
+  for (let i = 0; i < codeBlocks.length; i++) {
+      // get the blockuid from the parent div.id
+      let blockUID = codeBlocks[i].closest(".roam-block").id.split("-")
+      blockUID = blockUID[blockUID.length - 1]
+
+      // add the copy button
+      createButton(blockUID, codeBlocks[i])
   }
-  extensionAPI.settings.panel.create(panelConfig);
-
-  console.log("load example plugin");
 }
 
 function onunload() {
-  console.log("unload example plugin");
+  console.log("unload copy code block plugin");
+  // remove all parts of the button
+  const buttons = document.querySelectorAll('.copy-code-button');
+  // console.log(buttons)
+  buttons.forEach(btn => {
+      btn.remove();
+  });
 }
 
 export default {
