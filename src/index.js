@@ -5,29 +5,29 @@ var runners = {
   observers: [],
 }
 
-async function copyCode(e){
-  // datomic query to pull the block string. Only supports blocks with a single code block inside
-  let blockUID = e.srcElement.id
-  let query = `[:find ?s .
-      :in $ ?uid
-      :where 
-        [?e :block/uid ?uid]
-        [?e :block/string ?s]
-        ]`;
+async function copyCode(e) {
+  let codeBlock = e.path[6]
+  // select the parent codeblock
+  let code = codeBlock.querySelector('.cm-content').innerText
 
-  let blockString = window.roamAlphaAPI.q(query,blockUID);
-
-  // remove code block markdown using regex
-  let code = blockString.match(/```(?:\b.*\b)\n([\s\S]*?)```/)[1];
-  // copy codeblock to clipboard
   navigator.clipboard.writeText(code).then(function() {
   }, function(err) {
     console.error('Async: Could not copy text: ', err);
   });
 }
+
+async function copyInlineCode(e){
+  let code = e.path[2].innerText
+
+  navigator.clipboard.writeText(code).then(function() {
+  }, function(err) {
+    console.error('Async: Could not copy text: ', err);
+  });
+}
+
 const createIconButton = (icon, blockUID) => {
   const popoverButton = document.createElement("span");
-  popoverButton.className = "bp3-button bp3-minimal bp3-small copy-code-button";
+  popoverButton.className = "bp3-button bp3-minimal bp3-small copy-code-button  dont-focus-block";
   popoverButton.tabIndex = 0;
 
   const popoverIcon = document.createElement("span");
@@ -39,18 +39,6 @@ const createIconButton = (icon, blockUID) => {
 };
 
 function createButton(blockUID, DOMLocation){
-  const createCopyButton = () => {
-      const copySpan = document.createElement("span");
-      copySpan.className = "copy-code-button";
-
-      const copyButton = document.createElement("button");
-      copyButton.innerText  = `Copy`;
-      copyButton.className = "bp3-button bp3-minimal bp3-small";
-      copyButton.id = blockUID;
-      copySpan.appendChild(copyButton);
-
-      return copySpan;
-  };
 
   // check if a button exists
   let checkForButton = DOMLocation.getElementsByClassName('copy-code-button').length;
@@ -64,6 +52,22 @@ function createButton(blockUID, DOMLocation){
       settingsBar.insertAdjacentElement("beforebegin", mainButton);
       // console.log(DOMLocation.getElementsByClassName('copy-code-button'))
   }   
+}
+
+function creatInlineButton(blockUID, DOMLocation) {
+  // check if a button exists
+  let checkForButton = DOMLocation.getElementsByClassName('copy-code-button').length;
+
+  if (!checkForButton) {
+    let button = createIconButton('clipboard', blockUID)
+    button.style.paddingRight = "10px"
+    button.style.paddingBottom = "2px"
+
+    button.addEventListener("click", copyInlineCode, false);
+
+    DOMLocation.insertAdjacentElement('afterbegin', button)
+
+  }
 }
 
 function onload() {
@@ -83,9 +87,23 @@ function onload() {
       }
     }
     });
+    var inlineCodeBlockObserver = createObserver(() => {
+      if ( document.querySelectorAll("code")) {
+          var inlineCodeBlocks = document.querySelectorAll("code")
+          for (let i = 0; i < inlineCodeBlocks.length; i++) {
+            // get the blockuid from the parent div.id
+            let blockParent = inlineCodeBlocks[i].closest(".roam-block")
+            let blockUID = blockParent.id.split("-")
+            blockUID = blockUID[blockUID.length - 1]
+
+            // add the copy button
+            creatInlineButton(blockUID, inlineCodeBlocks[i])
+        }
+      }
+      });
  
 // save observers globally so they can be disconnected later
-runners['observers'] = [codeBlockObserver]
+runners['observers'] = [codeBlockObserver, inlineCodeBlockObserver]
 
   
 }
