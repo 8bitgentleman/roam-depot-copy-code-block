@@ -25,6 +25,18 @@ async function copyCode(e){
     console.error('Async: Could not copy text: ', err);
   });
 }
+const createIconButton = (icon, blockUID) => {
+  const popoverButton = document.createElement("span");
+  popoverButton.className = "bp3-button bp3-minimal bp3-small copy-code-button";
+  popoverButton.tabIndex = 0;
+
+  const popoverIcon = document.createElement("span");
+  popoverIcon.className = `bp3-icon bp3-icon-${icon}`;
+  popoverIcon.id = blockUID;
+  popoverButton.appendChild(popoverIcon);
+
+  return popoverButton;
+};
 
 function createButton(blockUID, DOMLocation){
   const createCopyButton = () => {
@@ -44,25 +56,23 @@ function createButton(blockUID, DOMLocation){
   let checkForButton = DOMLocation.getElementsByClassName('copy-code-button').length;
 
   if (!checkForButton) {
-      var mainButton = createCopyButton();
+      var mainButton = createIconButton('clipboard', blockUID);
       var settingsBar = DOMLocation.getElementsByClassName("rm-code-block__settings-bar")[0].lastElementChild;
       
       mainButton.addEventListener("click", copyCode, false);
 
       settingsBar.insertAdjacentElement("beforebegin", mainButton);
-      console.log(DOMLocation.getElementsByClassName('copy-code-button'))
+      // console.log(DOMLocation.getElementsByClassName('copy-code-button'))
   }   
 }
 
-// still need to do this for every page reload
-//maybe need a mutation observer?
 function onload() {
   console.log("load copy code block plugin");
 
   // find all code blocks on page
   var codeBlockObserver = createObserver(() => {
     if ( document.querySelectorAll(".rm-code-block")) {
-        let codeBlocks = document.querySelectorAll(".rm-code-block")
+        var codeBlocks = document.querySelectorAll(".rm-code-block")
         for (let i = 0; i < codeBlocks.length; i++) {
           // get the blockuid from the parent div.id
           let blockUID = codeBlocks[i].closest(".roam-block").id.split("-")
@@ -73,6 +83,7 @@ function onload() {
       }
     }
     });
+ 
 // save observers globally so they can be disconnected later
 runners['observers'] = [codeBlockObserver]
 
@@ -83,7 +94,6 @@ function onunload() {
   console.log("unload copy code block plugin");
   // remove all parts of the button
   const buttons = document.querySelectorAll('.copy-code-button');
-  // console.log(buttons)
   buttons.forEach(btn => {
       btn.remove();
   });
