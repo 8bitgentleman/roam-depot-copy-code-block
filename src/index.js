@@ -30,11 +30,10 @@ var inlineCopyEnabled = true;
 
 async function copyCode(e) {
   let codeBlock = e.target.closest(".rm-code-block");
-  
+
   // select the parent codeblock
   let code = codeBlock.querySelector(".cm-content").innerText;
-  console.log(code);
-  
+
   navigator.clipboard.writeText(code).then(
     function () {},
     function (err) {
@@ -112,17 +111,15 @@ function removeObservers() {
 }
 // MARK: create observer
 function createObservers() {
-  
   // find all code blocks on page
   var codeBlockObserver = createObserver(() => {
-    
     if (document.querySelectorAll(".rm-code-block")) {
       var codeBlocks = document.querySelectorAll(".rm-code-block");
-      
+
       for (let i = 0; i < codeBlocks.length; i++) {
         // get the blockuid from the parent div.id
         let blockUID = codeBlocks[i].closest(".roam-block").id.split("-");
-        
+
         blockUID = blockUID[blockUID.length - 1];
 
         // add the copy button
