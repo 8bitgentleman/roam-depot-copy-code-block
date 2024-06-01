@@ -37,7 +37,7 @@ async function copyCode(e) {
     function () {},
     function (err) {
       console.error("Async: Could not copy text: ", err);
-    }
+    },
   );
 }
 
@@ -48,7 +48,7 @@ async function copyInlineCode(e) {
     function () {},
     function (err) {
       console.error("Async: Could not copy text: ", err);
-    }
+    },
   );
 }
 
@@ -74,7 +74,7 @@ function createButton(blockUID, DOMLocation) {
   if (!checkForButton) {
     var mainButton = createIconButton("clipboard", blockUID);
     var settingsBar = DOMLocation.getElementsByClassName(
-      "rm-code-block__settings-bar"
+      "rm-code-block__settings-bar",
     )[0].lastElementChild;
 
     mainButton.addEventListener("click", copyCode, false);
@@ -161,7 +161,7 @@ function onload({ extensionAPI }) {
   inlineCopyEnabled = setSettingDefault(
     extensionAPI,
     "enable-inline-code-copy-button",
-    true
+    true,
   );
   extensionAPI.settings.panel.create(config);
 
