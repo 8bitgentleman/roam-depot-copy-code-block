@@ -28,18 +28,31 @@ var runners = {
 
 var inlineCopyEnabled = true;
 
-async function copyCode(e) {
-  let codeBlock = e.target.closest(".rm-code-block");
+async function copyCode(e, blockUID) {  
+  // let codeBlock = e.target.closest(".rm-code-block");
+  let eid = `[:block/uid "${blockUID}"]`
+  
+  let codeBlock = window.roamAlphaAPI.data.pull("[:block/string]", eid)[":block/string"]
+  
+  const codeBlockRegex = /```([a-zA-Z0-9+#]*)\n([\s\S]*?)```/;
 
-  // select the parent codeblock
-  let code = codeBlock.querySelector(".cm-content").innerText;
+  // Find the match in the markdown string
+  const match = codeBlock.match(codeBlockRegex);
+  
+  // If a match is found, return an object with the language and code block content, otherwise return null
+  if (match) {
+    const language = match[1] || null; // If no language is specified, set it to null
+    const code = match[2].trim();
 
-  navigator.clipboard.writeText(code).then(
-    function () {},
-    function (err) {
-      console.error("Async: Could not copy text: ", err);
-    },
-  );
+    navigator.clipboard.writeText(code).then(
+      function () {},
+      function (err) {
+        console.error("Async: Could not copy text: ", err);
+      },
+    );
+  } else {
+    return null;
+  }  
 }
 
 async function copyInlineCode(e) {
@@ -79,7 +92,9 @@ function createButton(blockUID, DOMLocation) {
       "rm-code-block__settings-bar",
     )[0].lastElementChild;
 
-    mainButton.addEventListener("click", copyCode, false);
+    mainButton.addEventListener("click", function(e) {
+      copyCode(e, blockUID);
+    }, false);
 
     settingsBar.insertAdjacentElement("beforebegin", mainButton);
     // console.log(DOMLocation.getElementsByClassName('copy-code-button'))
