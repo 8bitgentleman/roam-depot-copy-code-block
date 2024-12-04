@@ -29,30 +29,38 @@ var runners = {
 var inlineCopyEnabled = true;
 
 async function copyCode(e, blockUID) {  
-  // let codeBlock = e.target.closest(".rm-code-block");
   let eid = `[:block/uid "${blockUID}"]`
   
   let codeBlock = window.roamAlphaAPI.data.pull("[:block/string]", eid)[":block/string"]
   
-  const codeBlockRegex = /```([a-zA-Z0-9+#]*)\n([\s\S]*?)```/;
-
+  // Modified regex to handle hyphens and other special characters in language names
+  const codeBlockRegex = /```([a-zA-Z0-9+#\-_ ]*)([\s\S]*?)```/;
+  
   // Find the match in the markdown string
   const match = codeBlock.match(codeBlockRegex);
   
-  // If a match is found, return an object with the language and code block content, otherwise return null
+  // If a match is found, return an object with the language and code block content
   if (match) {
-    const language = match[1] || null; // If no language is specified, set it to null
+    const language = match[1]?.trim() || null; // If no language is specified, set it to null
     const code = match[2].trim();
-
-    navigator.clipboard.writeText(code).then(
-      function () {},
-      function (err) {
-        console.error("Async: Could not copy text: ", err);
-      },
-    );
-  } else {
-    return null;
-  }  
+    console.log("[code]", code);
+    
+    try {
+      await navigator.clipboard.writeText(code);
+      // Add visual feedback
+      const icon = e.target.closest('.copy-code-button')?.querySelector('.bp3-icon');
+      if (icon) {
+        icon.classList.remove('bp3-icon-clipboard');
+        icon.classList.add('bp3-icon-tick');
+        setTimeout(() => {
+          icon.classList.remove('bp3-icon-tick');
+          icon.classList.add('bp3-icon-clipboard');
+        }, 1000);
+      }
+    } catch (err) {
+      console.error("Could not copy text: ", err);
+    }
+  }
 }
 
 async function copyInlineCode(e) {
@@ -92,7 +100,7 @@ function createButton(blockUID, DOMLocation) {
       "rm-code-block__settings-bar",
     )[0].lastElementChild;
 
-    mainButton.addEventListener("click", function(e) {
+    mainButton.addEventListener("click", function(e) {      
       copyCode(e, blockUID);
     }, false);
 
