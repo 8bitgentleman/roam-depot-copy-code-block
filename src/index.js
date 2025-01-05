@@ -43,7 +43,6 @@ async function copyCode(e, blockUID) {
   if (match) {
     const language = match[1]?.trim() || null; // If no language is specified, set it to null
     const code = match[2].trim();
-    console.log("[code]", code);
     
     try {
       await navigator.clipboard.writeText(code);
