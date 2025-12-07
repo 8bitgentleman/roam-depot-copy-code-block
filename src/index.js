@@ -7,12 +7,61 @@ const config = {
       id: "enable-inline-code-copy-button",
       name: "Enable copy button on inline code blocks",
       description:
-        "If enabled, a copy button will appear on inline code blocks",
+        "If enabled, a copy button will appear on inline code blocks on hover",
       default: true,
       action: {
         type: "switch",
         onChange: (evt) => {
           inlineCopyEnabled = evt.target.checked;
+          onunload();
+          createObservers();
+        },
+      },
+    },
+    {
+      id: "enable-regular-code-copy-button",
+      name: "Enable copy button on regular code blocks",
+      description:
+        "If enabled, a copy button will appear on regular code blocks",
+      default: true,
+      action: {
+        type: "switch",
+        onChange: (evt) => {
+          regularCopyEnabled = evt.target.checked;
+          onunload();
+          createObservers();
+        },
+      },
+    },
+    {
+      id: "inline-hover-delay",
+      name: "Inline code button hover delay (seconds)",
+      description:
+        "How long to hover over inline code before the copy button appears",
+      default: "0.5",
+      action: {
+        type: "input",
+        placeholder: "0.5",
+        onChange: (evt) => {
+          const value = parseFloat(evt.target.value);
+          if (!isNaN(value) && value >= 0) {
+            inlineHoverDelay = value;
+            updateInlineStyles();
+          }
+        },
+      },
+    },
+    {
+      id: "button-icon-style",
+      name: "Button icon style",
+      description:
+        "Choose between a filled clipboard icon or an outlined duplicate icon",
+      default: "clipboard",
+      action: {
+        type: "select",
+        items: ["clipboard", "duplicate"],
+        onChange: (evt) => {
+          buttonIconStyle = evt;
           onunload();
           createObservers();
         },
@@ -27,6 +76,9 @@ var runners = {
 };
 
 var inlineCopyEnabled = true;
+var regularCopyEnabled = true;
+var inlineHoverDelay = 0.5;
+var buttonIconStyle = "clipboard";
 
 // Helper function to extract block UID from an ID (from roamjs-components)
 const getUidsFromId = (id) => {
@@ -112,11 +164,11 @@ async function copyCode(e, blockUID) {
       // Add visual feedback
       const icon = e.target.closest('.copy-code-button')?.querySelector('.bp3-icon');
       if (icon) {
-        icon.classList.remove('bp3-icon-clipboard');
+        icon.classList.remove(`bp3-icon-${buttonIconStyle}`);
         icon.classList.add('bp3-icon-tick');
         setTimeout(() => {
           icon.classList.remove('bp3-icon-tick');
-          icon.classList.add('bp3-icon-clipboard');
+          icon.classList.add(`bp3-icon-${buttonIconStyle}`);
         }, 1000);
       }
     } catch (err) {
@@ -136,11 +188,11 @@ async function copyInlineCode(e) {
     // Add visual feedback
     const icon = e.target.closest('.copy-code-button')?.querySelector('.bp3-icon');
     if (icon) {
-      icon.classList.remove('bp3-icon-clipboard');
+      icon.classList.remove(`bp3-icon-${buttonIconStyle}`);
       icon.classList.add('bp3-icon-tick');
       setTimeout(() => {
         icon.classList.remove('bp3-icon-tick');
-        icon.classList.add('bp3-icon-clipboard');
+        icon.classList.add(`bp3-icon-${buttonIconStyle}`);
       }, 1000);
     }
   } catch (err) {
@@ -148,14 +200,14 @@ async function copyInlineCode(e) {
   }
 }
 
-const createIconButton = (icon, blockUID) => {
+const createIconButton = (blockUID) => {
   const popoverButton = document.createElement("span");
   popoverButton.className =
     "bp3-button bp3-minimal bp3-small copy-code-button  dont-focus-block";
   popoverButton.tabIndex = 0;
 
   const popoverIcon = document.createElement("span");
-  popoverIcon.className = `bp3-icon bp3-icon-${icon}`;
+  popoverIcon.className = `bp3-icon bp3-icon-${buttonIconStyle}`;
   popoverIcon.id = blockUID;
   popoverButton.appendChild(popoverIcon);
 
@@ -168,12 +220,12 @@ function createButton(blockUID, DOMLocation) {
     DOMLocation.getElementsByClassName("copy-code-button").length;
 
   if (!checkForButton) {
-    var mainButton = createIconButton("clipboard", blockUID);
+    var mainButton = createIconButton(blockUID);
     var settingsBar = DOMLocation.getElementsByClassName(
       "rm-code-block__settings-bar",
     )[0].lastElementChild;
 
-    mainButton.addEventListener("click", function(e) {      
+    mainButton.addEventListener("click", function(e) {
       copyCode(e, blockUID);
     }, false);
 
@@ -188,12 +240,39 @@ function createInlineButton(blockUID, DOMLocation) {
     DOMLocation.getElementsByClassName("copy-code-button").length;
 
   if (!checkForButton) {
-    let button = createIconButton("clipboard", blockUID);
+    let button = createIconButton(blockUID);
     button.classList.add("inline-copy-code-button");
 
     button.addEventListener("click", copyInlineCode, false);
 
     DOMLocation.insertAdjacentElement("afterbegin", button);
+  }
+}
+
+function updateInlineStyles() {
+  const styleId = "copy-code-button-styles";
+  const existingStyle = document.getElementById(styleId);
+
+  if (existingStyle) {
+    existingStyle.textContent = `
+      code .inline-copy-code-button {
+        opacity: 0;
+        width: 0 !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        overflow: hidden;
+        transition: opacity 0.2s ease-in-out ${inlineHoverDelay}s, width 0.2s ease-in-out ${inlineHoverDelay}s, padding 0.2s ease-in-out ${inlineHoverDelay}s, margin 0.2s ease-in-out ${inlineHoverDelay}s;
+      }
+
+      code:hover .inline-copy-code-button {
+        opacity: 1;
+        width: auto !important;
+        padding: 5px !important;
+        margin: 0 2px !important;
+      }
+    `;
   }
 }
 
@@ -204,27 +283,10 @@ function injectStyles() {
   if (!document.getElementById(styleId)) {
     const style = document.createElement("style");
     style.id = styleId;
-    style.textContent = `
-      code .inline-copy-code-button {
-        opacity: 0;
-        width: 0 !important;
-        min-width: 0 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        border: none !important;
-        overflow: hidden;
-        transition: opacity 0.2s ease-in-out 0.5s, width 0.2s ease-in-out 0.5s, padding 0.2s ease-in-out 0.5s, margin 0.2s ease-in-out 0.5s;
-      }
-
-      code:hover .inline-copy-code-button {
-        opacity: 1;
-        width: auto !important;
-        padding: 5px !important;
-        margin: 0 2px !important;
-      }
-    `;
     document.head.appendChild(style);
   }
+
+  updateInlineStyles();
 }
 
 function removeStyles() {
@@ -244,22 +306,24 @@ function removeObservers() {
 // MARK: create observer
 function createObservers() {
   // find all code blocks on page
-  var codeBlockObserver = createObserver(() => {
-    if (document.querySelectorAll(".rm-code-block")) {
-      var codeBlocks = document.querySelectorAll(".rm-code-block");
+  if (regularCopyEnabled) {
+    var codeBlockObserver = createObserver(() => {
+      if (document.querySelectorAll(".rm-code-block")) {
+        var codeBlocks = document.querySelectorAll(".rm-code-block");
 
-      for (let i = 0; i < codeBlocks.length; i++) {
-        const blockUID = getBlockUidFromTarget(codeBlocks[i]);
+        for (let i = 0; i < codeBlocks.length; i++) {
+          const blockUID = getBlockUidFromTarget(codeBlocks[i]);
 
-        if (blockUID) {
-          // add the copy button
-          createButton(blockUID, codeBlocks[i]);
+          if (blockUID) {
+            // add the copy button
+            createButton(blockUID, codeBlocks[i]);
+          }
         }
       }
-    }
-  });
-  // save observers globally so they can be disconnected later
-  runners["observers"].push(codeBlockObserver);
+    });
+    // save observers globally so they can be disconnected later
+    runners["observers"].push(codeBlockObserver);
+  }
 
   if (inlineCopyEnabled) {
     var inlineCodeBlockObserver = createObserver(() => {
@@ -297,6 +361,26 @@ function onload({ extensionAPI }) {
     "enable-inline-code-copy-button",
     true,
   );
+
+  regularCopyEnabled = setSettingDefault(
+    extensionAPI,
+    "enable-regular-code-copy-button",
+    true,
+  );
+
+  const hoverDelaySetting = setSettingDefault(
+    extensionAPI,
+    "inline-hover-delay",
+    "0.5",
+  );
+  inlineHoverDelay = parseFloat(hoverDelaySetting);
+
+  buttonIconStyle = setSettingDefault(
+    extensionAPI,
+    "button-icon-style",
+    "clipboard",
+  );
+
   extensionAPI.settings.panel.create(config);
 
   injectStyles();
