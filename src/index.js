@@ -66,12 +66,21 @@ async function copyInlineCode(e) {
   let codeBlock = e.target.closest("code");
   let code = codeBlock.innerText;
 
-  navigator.clipboard.writeText(code).then(
-    function () {},
-    function (err) {
-      console.error("Async: Could not copy text: ", err);
-    },
-  );
+  try {
+    await navigator.clipboard.writeText(code);
+    // Add visual feedback
+    const icon = e.target.closest('.copy-code-button')?.querySelector('.bp3-icon');
+    if (icon) {
+      icon.classList.remove('bp3-icon-clipboard');
+      icon.classList.add('bp3-icon-tick');
+      setTimeout(() => {
+        icon.classList.remove('bp3-icon-tick');
+        icon.classList.add('bp3-icon-clipboard');
+      }, 1000);
+    }
+  } catch (err) {
+    console.error("Could not copy text: ", err);
+  }
 }
 
 const createIconButton = (icon, blockUID) => {
@@ -115,12 +124,48 @@ function createInlineButton(blockUID, DOMLocation) {
 
   if (!checkForButton) {
     let button = createIconButton("clipboard", blockUID);
-    button.style.paddingRight = "10px";
-    button.style.paddingBottom = "2px";
+    button.classList.add("inline-copy-code-button");
 
     button.addEventListener("click", copyInlineCode, false);
 
     DOMLocation.insertAdjacentElement("afterbegin", button);
+  }
+}
+
+function injectStyles() {
+  const styleId = "copy-code-button-styles";
+
+  // Check if styles already exist
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      code .inline-copy-code-button {
+        opacity: 0;
+        width: 0 !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        overflow: hidden;
+        transition: opacity 0.2s ease-in-out 0.5s, width 0.2s ease-in-out 0.5s, padding 0.2s ease-in-out 0.5s, margin 0.2s ease-in-out 0.5s;
+      }
+
+      code:hover .inline-copy-code-button {
+        opacity: 1;
+        width: auto !important;
+        padding: 5px !important;
+        margin: 0 2px !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+
+function removeStyles() {
+  const styleElement = document.getElementById("copy-code-button-styles");
+  if (styleElement) {
+    styleElement.remove();
   }
 }
 
@@ -191,6 +236,7 @@ function onload({ extensionAPI }) {
   );
   extensionAPI.settings.panel.create(config);
 
+  injectStyles();
   createObservers();
 }
 
@@ -202,6 +248,7 @@ function onunload() {
     btn.remove();
   });
   removeObservers();
+  removeStyles();
 }
 
 export default {
