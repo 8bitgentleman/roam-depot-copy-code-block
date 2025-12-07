@@ -28,22 +28,85 @@ var runners = {
 
 var inlineCopyEnabled = true;
 
-async function copyCode(e, blockUID) {  
-  let eid = `[:block/uid "${blockUID}"]`
-  
-  let codeBlock = window.roamAlphaAPI.data.pull("[:block/string]", eid)[":block/string"]
-  
-  // Modified regex to handle hyphens and other special characters in language names
-  const codeBlockRegex = /```([a-zA-Z0-9+#\-_ ]*)([\s\S]*?)```/;
-  
-  // Find the match in the markdown string
-  const match = codeBlock.match(codeBlockRegex);
-  
-  // If a match is found, return an object with the language and code block content
-  if (match) {
-    const language = match[1]?.trim() || null; // If no language is specified, set it to null
-    const code = match[2].trim();
-    
+// Helper function to extract block UID from an ID (from roamjs-components)
+const getUidsFromId = (id) => {
+  if (!id) return { blockUid: "", windowId: "" };
+  const blockUid = id.substring(id.length - 9, id.length);
+  const restOfHTMLId = id.substring(0, id.length - 10);
+  const windowId =
+    restOfHTMLId.match(/^block-input-([a-zA-Z0-9_-]+)$/)?.[1] || "";
+  return {
+    blockUid,
+    windowId,
+  };
+};
+
+// Helper function to extract block UID from a target element (inspired by roamjs-components)
+const getBlockUidFromTarget = (target) => {
+  // Check for block reference
+  const ref = target.closest(".rm-block-ref");
+  if (ref) {
+    return ref.getAttribute("data-uid") || "";
+  }
+
+  // Get the roam block container
+  const roamBlock = target.closest(".roam-block");
+  if (!roamBlock) {
+    return "";
+  }
+
+  // Try to find the block input element with the ID
+  const blockInput = roamBlock.querySelector(".rm-block__input");
+  if (blockInput && blockInput.id) {
+    return getUidsFromId(blockInput.id).blockUid;
+  }
+
+  // Fallback: try to get from roam-block id if it exists
+  if (roamBlock.id) {
+    return getUidsFromId(roamBlock.id).blockUid;
+  }
+
+  return "";
+};
+
+async function copyCode(e, blockUID) {
+  let code = null;
+
+  try {
+    let eid = `[:block/uid "${blockUID}"]`
+    let blockData = window.roamAlphaAPI.data.pull("[:block/string]", eid);
+
+    if (blockData && blockData[":block/string"]) {
+      let codeBlock = blockData[":block/string"];
+
+      // Modified regex to handle hyphens and other special characters in language names
+      const codeBlockRegex = /```([a-zA-Z0-9+#\-_ ]*)([\s\S]*?)```/;
+
+      // Find the match in the markdown string
+      const match = codeBlock.match(codeBlockRegex);
+
+      // If a match is found, extract the code
+      if (match) {
+        code = match[2].trim();
+      }
+    }
+  } catch (err) {
+    console.error("Could not fetch code from API: ", err);
+  }
+
+  // Fallback: try to get code directly from DOM
+  if (!code) {
+    const codeBlock = e.target.closest('.rm-code-block');
+    if (codeBlock) {
+      const codeContent = codeBlock.querySelector('.CodeMirror-code');
+      if (codeContent) {
+        code = codeContent.innerText;
+      }
+    }
+  }
+
+  // Copy the code if we found it
+  if (code) {
     try {
       await navigator.clipboard.writeText(code);
       // Add visual feedback
@@ -59,6 +122,8 @@ async function copyCode(e, blockUID) {
     } catch (err) {
       console.error("Could not copy text: ", err);
     }
+  } else {
+    console.error("Could not find code to copy");
   }
 }
 
@@ -184,13 +249,12 @@ function createObservers() {
       var codeBlocks = document.querySelectorAll(".rm-code-block");
 
       for (let i = 0; i < codeBlocks.length; i++) {
-        // get the blockuid from the parent div.id
-        let blockUID = codeBlocks[i].closest(".roam-block").id.split("-");
+        const blockUID = getBlockUidFromTarget(codeBlocks[i]);
 
-        blockUID = blockUID[blockUID.length - 1];
-
-        // add the copy button
-        createButton(blockUID, codeBlocks[i]);
+        if (blockUID) {
+          // add the copy button
+          createButton(blockUID, codeBlocks[i]);
+        }
       }
     }
   });
@@ -202,13 +266,12 @@ function createObservers() {
       if (document.querySelectorAll("code")) {
         var inlineCodeBlocks = document.querySelectorAll("code");
         for (let i = 0; i < inlineCodeBlocks.length; i++) {
-          // get the blockuid from the parent div.id
-          let blockParent = inlineCodeBlocks[i].closest(".roam-block");
-          let blockUID = blockParent.id.split("-");
-          blockUID = blockUID[blockUID.length - 1];
+          const blockUID = getBlockUidFromTarget(inlineCodeBlocks[i]);
 
-          // add the copy button
-          createInlineButton(blockUID, inlineCodeBlocks[i]);
+          if (blockUID) {
+            // add the copy button
+            createInlineButton(blockUID, inlineCodeBlocks[i]);
+          }
         }
       }
     });
