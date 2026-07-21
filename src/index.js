@@ -79,15 +79,16 @@ async function copyCode(e, blockUID) {
     if (blockData && blockData[":block/string"]) {
       let codeBlock = blockData[":block/string"];
 
-      // Modified regex to handle hyphens and other special characters in language names
-      const codeBlockRegex = /```([a-zA-Z0-9+#\-_ ]*)([\s\S]*?)```/;
+      // Modified regex to handle hyphens and other special characters in language names.
+      // Reuse the opening fence length so shorter nested fences stay in the code.
+      const codeBlockRegex = /(`{3,})([a-zA-Z0-9+#\-_ ]*)([\s\S]*?)\1/;
 
       // Find the match in the markdown string
       const match = codeBlock.match(codeBlockRegex);
 
       // If a match is found, extract the code
       if (match) {
-        code = match[2].trim();
+        code = match[3].trim();
       }
     }
   } catch (err) {
