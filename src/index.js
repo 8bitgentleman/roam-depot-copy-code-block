@@ -1,4 +1,5 @@
 import createObserver from "roamjs-components/dom/createObserver";
+import { extractCode } from "./fence.mjs";
 
 const config = {
   tabTitle: "Code Block Copy Button",
@@ -77,19 +78,7 @@ async function copyCode(e, blockUID) {
     let blockData = window.roamAlphaAPI.data.pull("[:block/string]", eid);
 
     if (blockData && blockData[":block/string"]) {
-      let codeBlock = blockData[":block/string"];
-
-      // Modified regex to handle hyphens and other special characters in language names.
-      // Reuse the opening fence length so shorter nested fences stay in the code.
-      const codeBlockRegex = /(`{3,})([a-zA-Z0-9+#\-_ ]*)([\s\S]*?)\1/;
-
-      // Find the match in the markdown string
-      const match = codeBlock.match(codeBlockRegex);
-
-      // If a match is found, extract the code
-      if (match) {
-        code = match[3].trim();
-      }
+      code = extractCode(blockData[":block/string"]);
     }
   } catch (err) {
     console.error("Could not fetch code from API: ", err);
